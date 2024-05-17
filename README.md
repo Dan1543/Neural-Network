@@ -1,5 +1,8 @@
 # Neural-Network
 This project has been developed for the Neural Network class. It is a Python library crafted to facilitate the creation, optimization, and validation of Neural Networks. It encompasses two optimizers, namely RMSProp and AdamW, alongside a range of activation functions and error functions.
+### V 0.1.2
+By: @Dan1543
+Added the option to initialize the weights by the Nguyen-Widraw method. 
 ### V 0.1.1 
 By: @Dan1543
 For this version the DNN is working, the input data should be in a format like the following:
