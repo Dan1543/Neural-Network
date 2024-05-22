@@ -1,5 +1,13 @@
 # Neural-Network
 This project has been developed for the Neural Network class. It is a Python library crafted to facilitate the creation, optimization, and validation of Neural Networks. It encompasses two optimizers, namely RMSProp and AdamW, alongside a range of activation functions and error functions.
+## V 1.0.2
+By: @Dan1543
+ 
+Added the RMSE error function, also the AdamW optimizer
+## V 1.0.1
+By: @Dan1543
+
+Separated the library into .py files, they can be instaladed by using 'pip install -e .' 
 ## V 1.0.0
 By: @Dan1543
 
