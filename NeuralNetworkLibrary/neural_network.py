@@ -5,7 +5,7 @@ class NeuralNetwork:
     """Class for the structure of a Neural Network"""
     def __init__(self, input_size:int, layer_sizes:list[int], output_size:int, 
                  activation_funcs:list['activationFunction'], wInit:str='random',
-                 dropout_rate:float=0, regularization:str='None',lambda_reg:float=0.01)->None:
+                 dropout_rate:float=0, regularization:str='None',lambda_reg:float=0.01, tipo:str='clasificasion')->None:
         """
         Parameters:
         input_size: int 
@@ -29,6 +29,7 @@ class NeuralNetwork:
         self.n_outputs = []  # Lista para almacenar las salidas antes de la función de activación
         self.a_outputs = []
         self.dropout_masks = []
+        self.tipo = tipo
 
     
     def _initializeWeights(self, wInit):
@@ -85,27 +86,32 @@ class NeuralNetwork:
             A = np.hstack([A, np.ones((A.shape[0], 1))])
             self.a_outputs.append(A)
         return A[:, :-1]
-
+    
     def backwardPass(self, targets):
-        #gradients = np.array([])
         gradients = []
-        e = targets - self.a_outputs[-1][:,:-1]
-        ge = -2*e
-        delta = ge * self.activation_funcs[-1].derivative(np.array(self.n_outputs[-1]))
-        ae = self.a_outputs[-2] #El metodo forward pass deja a_outputs aumentado
-        ge = np.dot(ae.T,delta)
+        
+        # Error y delta para la capa de salida
+        if self.tipo == "regresion":
+            e = targets - self.a_outputs[-1][:,:-1]
+            ge = -2 * e
+            delta = ge * self.activation_funcs[-1].derivative(np.array(self.n_outputs[-1]))
+        elif self.tipo == "clasificasion":
+            delta = self.a_outputs[-1][:,:-1] - targets 
+            ge = np.dot(self.a_outputs[-2].T, delta)
+        
         gradients.append(ge)
         
+        # Backpropagate through hidden layers
         for i in range(self.num_layers-2, 0, -1): 
-            fdx = self.activation_funcs[i].derivative(np.array(self.n_outputs[i]))
-            delta = fdx * np.dot(delta,self.weights[i][:-1].T)
-            
-            if self.dropout_rate > 0 and self.dropout_masks: #Si existe alguna mascara de dropout aplicarla
-                delta *= self.dropout_masks.pop()  # Apply dropout mask
-            
-            ae = self.a_outputs[i-1]
-            ge = np.dot(ae.T,delta)
-            gradients.insert(0,ge)
+                fdx = self.activation_funcs[i].derivative(np.array(self.n_outputs[i]))
+                delta = fdx * np.dot(delta,self.weights[i][:-1].T)
+                
+                if self.dropout_rate > 0 and self.dropout_masks: #Si existe alguna mascara de dropout aplicarla
+                    delta *= self.dropout_masks.pop()  # Apply dropout mask
+                
+                ae = self.a_outputs[i-1]
+                ge = np.dot(ae.T,delta)
+                gradients.insert(0,ge)
         return gradients
             
     def error(self,targets,error_func):

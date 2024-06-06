@@ -177,7 +177,8 @@ class Softmax(activationFunction):
         return ex / np.sum(ex)
     
     def derivative(self, x):
-        raise NotImplementedError("La derivada de Softmax no se utiliza típicamente en el entrenamiento de redes neuronales.")
+        #raise NotImplementedError("La derivada de Softmax no se utiliza típicamente en el entrenamiento de redes neuronales.")
+        return np.ones_like(x)
     
     def active(self):
         out = [-float('inf'), float('inf')]
