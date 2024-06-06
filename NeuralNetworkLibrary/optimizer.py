@@ -10,8 +10,8 @@ class Optimizer():
     AdamW() 
     """
     def __init__(self,lr:float,maxEpochs:int,goal:float,mingrad:float,nn: NeuralNetwork,
-                 inputs:np.array,targets:np.array,error_fun,show:int =1,consecutive_epochs:int =10,
-                 batch_size: int=1)->None:  
+                 inputs:np.array,targets:np.array,test_inputs:np.array,test_targets:np.array,
+                 error_fun,show:int =1,consecutive_epochs:int =10,batch_size: int=1)->None:  
         self.nn = nn
         self.name = "DEFAULT"
         self.lr = lr
@@ -22,6 +22,8 @@ class Optimizer():
         self.show = show
         self.inputs = inputs
         self.targets = targets
+        self.test_inputs = test_inputs
+        self.test_targets = test_targets
         self.error_fun = error_fun
         self.consecutive_epochs = consecutive_epochs
         
@@ -31,8 +33,11 @@ class Optimizer():
         stop = ""
         epochs = []
         perfs  = []
+        test_perfs = []
         consecutive_rise = 0  # Contador para el número de épocas consecutivas en las que el rendimiento ha subido
+        consecutive_test_rise = 0
         prev_perf = float('inf')
+        prev_test_perf = float('inf')
         num_samples = self.inputs.shape[0]  # Número de ejemplos de entrenamiento
         print("\n")
 
@@ -64,6 +69,9 @@ class Optimizer():
                 
             perf = self.nn.error(self.targets, self.error_fun)
             
+            test_pred = self.nn.forwardPass(self.test_inputs,training=False)
+            test_perf = self.error_fun(test_pred,self.test_targets)
+            
             # Aplanar y concatenar los gradientes en un solo vector
             gX_flattened = np.concatenate([grad.flatten() for grad in gX])
             normgX = np.linalg.norm(gX_flattened)
@@ -71,40 +79,54 @@ class Optimizer():
             # Stopping criteria
             epochs = np.append(epochs, epoch)
             perfs = np.append(perfs, perf)
+            test_perfs = np.append(test_perfs,test_perf)
+            
             if np.all(perf <= self.goal):
                 stop = "Performance goal met"
             elif epoch == self.maxEpochs:
                 stop = "Maximum epoch reached, performance goal was not met"
             elif normgX < self.mingrad:
                 stop = "Minimum gradient reached, performance goal was not met"
-            elif perf >= prev_perf or (abs(perf - prev_perf) < self.goal * 10):
+            elif perf >= prev_perf:
                 consecutive_rise += 1
                 if consecutive_rise >= self.consecutive_epochs:
                     stop = f"Performance has risen for {self.consecutive_epochs} consecutive epochs"
             elif perf < prev_perf:
                 consecutive_rise = 0
 
+            """if prev_test_perf >= test_perf:
+                consecutive_test_rise += 1
+                if consecutive_test_rise >= self.consecutive_epochs*3:
+                    stop = f"Test performance has risen for {self.consecutive_epochs*3} consecutive epochs"
+            elif prev_test_perf < test_perf:
+                consecutive_test_rise = 0"""
+                
             prev_perf = perf
+            #prev_test_perf = test_perf
+            
             if (np.fmod(epoch, self.show) == 0 or len(stop) != 0):
                 print(this, end=": ")
                 if np.isfinite(self.maxEpochs):
                     print("Epoch ", epoch, "/", self.maxEpochs, end=" ")
                 if np.isfinite(self.goal):
                     print(", Performance %8.3e" % perf, "/", self.goal, end=" ")
+                if np.isfinite(self.goal):
+                    print(", Test Performance %8.3e" % test_perf, "/", self.goal, end=" ")
                 if np.isfinite(self.mingrad):
                     print(", Gradient %8.3e" % normgX, "/", self.mingrad)
-
+                
                 if len(stop) != 0:
                     print("\n", this, ":", stop, "\n")
                     break            
-        return perfs, epochs
+        return perfs, test_perfs,epochs
 
     def train(self,gX):
         raise NotImplementedError("No se ha definido el optimizador, esta es la clase base")
     
     
 class RmsProp(Optimizer):
-    def __init__(self, nn: NeuralNetwork, inputs:np.array, targets:np.array,lr: float =1e-3, batch_size: int =0, maxEpochs: int =500, 
+    def __init__(self, nn: NeuralNetwork, inputs:np.array, targets:np.array,
+                 test_inputs:np.array,test_targets:np.array,lr: float =1e-3, batch_size: int =0, maxEpochs: int =500, 
                  goal: float =1e-8,mingrad: float =1e-11, show:int =1, error_fun=ErrorFunctions.SSE, 
                  consecutive_epochs: int=10,WDecay:float=0,alpha:float=0.99,centered:bool=False,
                  momentum:float=0.6,epsilon:float=1e-9) -> None:
@@ -112,7 +134,7 @@ class RmsProp(Optimizer):
             raise TypeError("El argumento 'inputs' debe ser un array de NumPy.")
         if not isinstance(targets, np.ndarray):
             raise TypeError("El argumento 'targets' debe ser un array de NumPy.")
-        super().__init__(lr,maxEpochs,goal,mingrad,nn,inputs,targets,error_fun,show,consecutive_epochs,batch_size)
+        super().__init__(lr,maxEpochs,goal,mingrad,nn,inputs,targets,test_inputs,test_targets,error_fun,show,consecutive_epochs,batch_size)
         self.name = "trainRMSPROP"
         self.epsilon = epsilon
         self.v = np.zeros_like(np.concatenate([w.flatten() for w in nn.weights]))  # Vector de acumulación de gradientes
@@ -157,7 +179,8 @@ class RmsProp(Optimizer):
             
             
 class AdamW(Optimizer):
-    def __init__(self, nn: NeuralNetwork, inputs:np.array, targets:np.array,lr: float =1e-3, batch_size: int =0, maxEpochs: int =500, 
+    def __init__(self, nn: NeuralNetwork, inputs:np.array, targets:np.array,
+                 test_inputs:np.array,test_targets:np.array,lr: float =1e-3, batch_size: int =0, maxEpochs: int =500, 
                  goal: float =1e-8,mingrad: float =1e-11, show:int =1, error_fun=ErrorFunctions.SSE, 
                  consecutive_epochs: int=10,WDecay:float=0.001,maximize:bool=False,amsgrad:bool=False,
                  b1:float=0.9,b2:float=0.999,epsilon:float=1e-9) -> None:
@@ -165,7 +188,7 @@ class AdamW(Optimizer):
             raise TypeError("El argumento 'inputs' debe ser un array de NumPy.")
         if not isinstance(targets, np.ndarray):
             raise TypeError("El argumento 'targets' debe ser un array de NumPy.")
-        super().__init__(lr,maxEpochs,goal,mingrad,nn,inputs,targets,error_fun,show,consecutive_epochs,batch_size)
+        super().__init__(lr,maxEpochs,goal,mingrad,nn,inputs,targets,test_inputs,test_targets,error_fun,show,consecutive_epochs,batch_size)
         self.name = "trainAdamW"
         self.WDecay = WDecay
         self.b1 = b1

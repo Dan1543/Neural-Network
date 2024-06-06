@@ -74,3 +74,9 @@ class ErrorFunctions:
             Root mean squared error
         """
         return np.sqrt(ErrorFunctions.MSE(y_true, y_pred))
+    
+    def R2(y_true, y_pred):
+        
+        sum_squares_residuals = sum((y_true - y_pred) ** 2)
+        sum_squares = sum((y_true - np.mean(y_true)) ** 2)
+        return 1 - sum_squares_residuals / sum_squares
