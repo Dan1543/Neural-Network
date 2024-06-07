@@ -172,16 +172,15 @@ class SatLins(activationFunction):
 class Softmax(activationFunction):
     """Normalized exponential function (softmax)"""
     def function(self, x):
-        x  = np.subtract(x, np.max(x))        # prevent overflow
+        x  = np.subtract(x, np.max(x,axis=-1,keepdims=True))        # prevent overflow
         ex = np.exp(x)
-        return ex / np.sum(ex)
+        return ex / np.sum(ex,axis=-1,keepdims=True)
     
     def derivative(self, x):
         raise NotImplementedError("La derivada de Softmax no se utiliza típicamente en el entrenamiento de redes neuronales.")
     
     def active(self):
-        out = [-float('inf'), float('inf')]
-        return out
+        return [0,1]
     
 class LeakyRelu(activationFunction):
     """Leaky rectified linear unit function (leakyRelu)"""
