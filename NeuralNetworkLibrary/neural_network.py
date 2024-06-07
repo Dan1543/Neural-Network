@@ -97,7 +97,7 @@ class NeuralNetwork:
         gradients.append(ge)
         
         for i in range(self.num_layers-2, 0, -1): 
-            fdx = self.activation_funcs[i].derivative(np.array(self.n_outputs[i]))
+            fdx = self.activation_funcs[i-1].derivative(np.array(self.n_outputs[i]))
             delta = fdx * np.dot(delta,self.weights[i][:-1].T)
             
             if self.dropout_rate > 0 and self.dropout_masks: #Si existe alguna mascara de dropout aplicarla
